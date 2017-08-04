@@ -6,6 +6,7 @@ var EX, strPeek = require('string-peeks'), types = require('./src/types');
 
 
 function inPair(x, p) { return (x === p[0] ? 1 : (x === p[1] ? 2 : 0)); }
+function pushIf(a, x) { if (x) { a.push(x); } }
 
 
 EX = function (code, opt) {
@@ -24,11 +25,11 @@ EX = function (code, opt) {
 };
 
 
-EX.sepCharsRgx = /(\s|%)|([\(\)\[\]\{\}])|(<+)|(>+)|(?!^\/?)(\/)/;
+EX.sepCharsMark = { inc: false,
+  rgx: /(\s|%)|([\(\)\[\]\{\}<>])|(\/{1,2})/ };
 EX.parseMoreTokens = function (limit) {
   var pmt = this, spbuf = pmt.spbuf, opt = pmt.opt, newTokens = [], ctx,
     wspRgx = /^\s+/, wantWsp = (opt.ignWsp === false),
-    sepNoInc = { mark: EX.sepCharsRgx, inc: false },
     wsp, tkn, tmp;
   ctx = { parseMoreTokens: pmt, buf: spbuf,
     limit: (limit === +limit ? limit : Number.POSITIVE_INFINITY), };
@@ -38,10 +39,10 @@ EX.parseMoreTokens = function (limit) {
       spbuf.eat();
       if (spbuf.isEmpty()) { return (wantWsp && { t: ' ', w: wsp }); }
     }
-    tkn = spbuf.peekMark(sepNoInc, null, EX.predigestOneToken);
+    tkn = spbuf.peekMark(EX.sepCharsMark, null, EX.predigestOneToken);
     if (!tkn) { spbuf.anomaly('foundNonToken'); }
     if (wsp && wantWsp) { tkn.w = wsp; }
-    console.log('eat1:', newTokens.length, tkn);
+    //console.log('eat1:', newTokens.length, tkn);
     if (opt.convert) {
       tmp = opt.convert(tkn, ctx);
       if (tmp === null) { return 'skip'; }
@@ -57,18 +58,20 @@ EX.parseMoreTokens = function (limit) {
 
 
 EX.predigestOneToken = function digest(tx, sep) {
-  //console.log({ predigestOneToken: [ tx, sep ] });
   if (!sep) { return sep; }
-  if (tx) { return EX.parseName(this.eat()); }
-  var buf = this, wsp = sep[1], brak = sep[2],
-    angOp = sep[3], angCl = sep[4];
+  if (tx) { return EX.parseName('', this.eat()); }
+  var buf = this, wsp = sep[1], brak = sep[2], sl = sep[3];
   if (wsp) {
     if (wsp === '%') { return EX.parseComment(buf); }
     return buf.anomaly('predigest_wsp');
   }
   if (brak) { return EX.foundBracket(brak, buf); }
-  return { xx: buf.eatChars(sep[0].length),
-    b: brak, aO: angOp, aC: angCl };
+  if (sl) {
+    buf.eatChars(sl.length);
+    buf.peekMark(EX.sepCharsMark, '');
+    return EX.parseName(sl, this.eat());
+  }
+  buf.anomaly('predigestUnknownToken', sep[0]);
 };
 
 
@@ -79,24 +82,26 @@ EX.parseComment = function (buf) {
 };
 
 
-EX.parseName = function (src) {
-  var num = EX.parseNumber(src), sl, tkn;
-  if (num) { return num; }
-  sl = /^\/*/.exec(src)[0].length;
-  if (sl) {
-    if (sl > 2) { throw new Error('Only one token per call!'); }
-    src = src.slice(sl);
+EX.parseName = function (slashes, src) {
+  var num, tkn;
+  if (slashes) {
+    slashes = slashes.length;
+    if (slashes > 2) { throw new Error('Only one token per call!'); }
+  } else {
+    num = EX.parseNumber(src);
+    if (num) { return num; }
+    slashes = 0;
   }
   tkn = types.bless('name', src);
-  if (sl === 0) { tkn.x = true; }
-  if (sl === 2) { tkn.x = '//'; }
+  if (slashes === 0) { tkn.x = true; }
+  if (slashes === 2) { tkn.x = '//'; }
   return tkn;
 };
 
 
 EX.maybeNumberRgx = new RegExp(('^' +
   '([\\+\\-]?)([0-9]*)' +
-  '(#[0-9a-zA-Z]+$|)' +
+  '(#[0-9a-zA-Z]*$|)' +
   '(\\.[0-9]*|)([Ee][\\+\\-]?[0-9]+|)' +
   '$'), '');
 EX.parseNumber = function (src) {
@@ -128,20 +133,53 @@ EX.eatWhitespace = function (peek) {
 
 
 EX.foundBracket = function (br, buf) {
-  if (br === ')') { return buf.anomaly('unexpStringTerm'); }
+  if (br === ')') { return buf.anomaly('unexpectedClosingParen'); }
   buf.eatChars(br.length);
   if (br === '(') { return EX.parseString(buf); }
   if (inPair(br, '[]')) { return types.bless('name', br, 'x'); }
   if (inPair(br, '{}')) { return types.bless('x_scan_mark', br); }
-  throw new Error('unsupported bracket type: ' + br);
+  var nx;
+  if (inPair(br, '<>')) {
+    nx = (buf.peekMark(/^[~<>]/, '') && buf.eat());
+    if (nx === br) { return types.bless('name', br + nx, 'x'); }
+    br += nx;
+    buf.anomaly('unexpectedBrackets', br);
+  }
+  throw new Error('Bug: unsupported bracket type: ' + br);
 };
 
 
 EX.parseString = function (buf) {
-  var fx = /\(|\)|\\/;
-  buf.anomaly(':TODO:parseString');
-  return fx;
+  var strPt = [], dig = EX.strAttnDigest.bind(null, buf, strPt);
+  strPt.parens = 1;
+  while (strPt.parens > 0) { buf.peekMark(EX.strAttnMark, null, dig); }
+  return types.blessBinStr(strPt.join(''));
 };
+EX.strAttnMark = { rgx: /\(|\)|\\/, inc: false };
+EX.strAttnDigest = function (buf, strPt, tx, m) {
+  //console.log({ attn: tx, m: m.slice() });
+  if (!m) { buf.anomaly('unterminatedParenString'); }
+  if (tx) { strPt.push(buf.eat()); }
+  m = buf.eatChars(1);
+  if (m === '\\') { return pushIf(strPt, EX.strBkslRgx.eat(buf)); }
+  strPt.parens += (m === '(' ? 1 : -1);
+  if (strPt.parens > 0) { strPt.push(m); }
+};
+EX.strBkslRgx = (function () {
+  var rx = /^(?:([0-7]{1,3})|(\r\n?|\n)|(\\|\(|\))|([nrtbf]))/;
+  function decode(tx, m) {
+    if (!m) { return this.eatChars(1); }
+    if (this.eat() !== tx) { throw new Error('Bug: misaligned match'); }
+    var oct = m[1], eol = m[2], lit = m[3], ctrl = m[4];
+    if (oct) { return String.fromCharCode(parseInt(oct, 8)); }
+    if (eol) { return ''; }
+    if (lit) { return lit; }
+    if (ctrl) { return JSON.parse('"\\' + ctrl + '"'); }
+    throw new Error('Bug: no group in match', m);
+  }
+  rx.eat = function (buf) { return buf.peekMark(rx, null, decode); };
+  return rx;
+}());
 
 
 

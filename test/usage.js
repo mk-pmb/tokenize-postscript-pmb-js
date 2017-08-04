@@ -5,24 +5,30 @@
 var eq = require('equal-pmb'),
   rrfs = require('read-resolved-file-sync')(require);
 
+eq.lists.dumpLongerList = 15;
 function fixture(fn) { return rrfs('./' + fn); }
 
+fixture.json = function (fn) {
+  return JSON.parse(fixture(fn + '.json').replace(/^\uFEFF/, ''
+    ).replace(/,(\s*\n)null *(\]\s*)$/, '$1$2'));
+};
 
 
 
-(function readmeDemo(equal) {
+(function readmeDemo() {
   //#u
   var makeTokenizer = require('tokenize-postscript-pmb'),
-    psCode = fixture('./input/usage.ps'),
+    psCode = fixture('input/usage.ps'),
     parseOpt = { ignWsp: false },
     tokenize = makeTokenizer(psCode, parseOpt),
     tokens = tokenize(),
-    expected = require('./expected/usage.tokens.json');
+    expected = fixture.json('expect/usage.tokens'),
+    equal = require('equal-pmb');
 
   equal(tokenize.remainder(), '');
-  equal(tokens, expected);
+  equal.lists(tokens, expected);
   //#r
-}(eq));
+}());
 
 
 

@@ -66,7 +66,14 @@ EX.verifySafeInteger = function (n) {
 EX.makeRadixNumber = function (radix, digits) {
   var n = parseIntLoudFail(digits || '0', +radix, false);
   if (n === false) { return n; }
-  return EX.blessIntOrRealtIfHuge(n);
+  return EX.blessIntOrRealIfHuge(n);
+};
+
+
+EX.blessBinStr = function (jsStr) {
+  var psStr = EX.bless('string', jsStr);
+  psStr.charset = 'latin1';
+  return psStr;
 };
 
 

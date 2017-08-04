@@ -5,26 +5,25 @@
 /R { 2 dict begin
   /objGen exch def
   /objID exch def
-  [ (indirect object:) /ID objID /generation objGen ]
+  [ /indirect_object: /ID objID /generation objGen ]
 end } def
-% ^-- function psFunc() { return EX.runFunc(psFunc, this, arguments); }
-%      mit psFunc.stack = [ … ]
 
 %PDF-1.5
+%comment
+% another comment
 2 0 obj
 << /ExtGState << /a0 << /CA 1 /ca 1 >> >>
   /Pattern << /p6 6 0 R /p8 8 0 R /p9 9 0 R /p10 10 0 R
-      /p11 11 0 R /p12 12 0 R /p13 13 0 R /p14 14 0 R
-      /p15 15 0 R /p16 16 0 R /p17 17 0 R /p18 18 0 R
+      /p11 11 0 R /p12 12 0 R /p13 13 0 R /p14 14 0 R >>
   /Font << /f-0-0 5 0 R /f-1-0 7 0 R >>
   >>
 endobj
 
 (  test string (( foo ( bar ) \
     baz )) \n\\\t\a
-    \377 )
+    \374 )
 
-[ inttype
+inttype [
   0123  1234
   -0123 -1234
   +0123 +1234
@@ -32,10 +31,17 @@ endobj
   8#0755 16#DeadBeef 2#1101011 5#0 5#
   ]
 
-[ nametype
-  / // /// ////
+nametype [
+  / //
+  % ^-- emptyName, emptyName+immExec
+  ///
+  % ^-- emptyName+immExec, emptyName
+  ////
+  % ^-- emptyName+immExec × 2
+
   not inttype
   0#0 1#0 -1#0 37#0 8#0779
+
   not realtype
   ..
   +..
@@ -43,6 +49,13 @@ endobj
   -e-4
   ]
 
+realtype [
+  3.14
+  +31415e-4
+  .042E3
+  5.e+1
+  -18e-5
+  ]
 
 
 
