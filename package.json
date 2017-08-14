@@ -1,5 +1,5 @@
 { "name": "tokenize-postscript-pmb",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Parse the subset of PostScript that I understand.",
   "keywords": [ "parse", "postscript", "token" ],
 
@@ -21,11 +21,12 @@
 
   "dependencies": {
     "parseint-loudfail": "^1.0.4",
-    "string-peeks": "^0.0.11"
+    "string-peeks": "^0.0.12"
   },
   "devDependencies": {
-    "equal-pmb": "^0.1.12",
+    "equal-pmb": "^0.1.13",
     "read-resolved-file-sync": "^1.0.1",
+    "univeil": "^0.1.9",
     "usnam-pmb": "^0.2.3"
   },
 

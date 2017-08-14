@@ -5,6 +5,7 @@
 var EX, strPeek = require('string-peeks'), types = require('./src/types');
 
 
+function ifPlusNum(x, d) { return (x === +x ? x : d); }
 function inPair(x, p) { return (x === p[0] ? 1 : (x === p[1] ? 2 : 0)); }
 function pushIf(a, x) { if (x) { a.push(x); } }
 
@@ -25,23 +26,26 @@ EX = function (code, opt) {
 };
 
 
+EX.T = types;
+
+
+EX.simpleVanilla = function (code) {
+  var tokenize = EX(code), tokens = tokenize(),
+    remainder = tokenize.remainder();
+  if (remainder !== '') { tokens.push(types.bless('x_unparsed', remainder)); }
+  return tokens;
+};
+
+
 EX.sepCharsMark = { inc: false,
   rgx: /(\s|%)|([\(\)\[\]\{\}<>])|(\/{1,2})/ };
-EX.parseMoreTokens = function (limit) {
+EX.parseMoreTokens = function (onceOpt) {
+  if (!onceOpt) { onceOpt = false; }
   var pmt = this, spbuf = pmt.spbuf, opt = pmt.opt, newTokens = [], ctx,
-    wspRgx = /^\s+/, wantWsp = (opt.ignWsp === false),
-    wsp, tkn, tmp;
+    wspRgx = /^\s+/, wantWsp = (opt.ignWsp === false);
   ctx = { parseMoreTokens: pmt, buf: spbuf,
-    limit: (limit === +limit ? limit : Number.POSITIVE_INFINITY), };
-  function eat1() {
-    wsp = spbuf.peekMark(wspRgx);
-    if (wsp) {
-      spbuf.eat();
-      if (spbuf.isEmpty()) { return (wantWsp && { t: ' ', w: wsp }); }
-    }
-    tkn = spbuf.peekMark(EX.sepCharsMark, null, EX.predigestOneToken);
-    if (!tkn) { spbuf.anomaly('foundNonToken'); }
-    if (wsp && wantWsp) { tkn.w = wsp; }
+    limit: ifPlusNum(onceOpt.limit, Number.POSITIVE_INFINITY), };
+  function got1(tkn, tmp) {
     //console.log('eat1:', newTokens.length, tkn);
     if (opt.convert) {
       tmp = opt.convert(tkn, ctx);
@@ -50,7 +54,18 @@ EX.parseMoreTokens = function (limit) {
     }
     if (opt.collect) { opt.collect.push(tkn); }
     newTokens.push(tkn);
-    limit -= 1;
+    ctx.limit -= 1;
+  }
+  function eat1() {
+    var tkn, wsp = (spbuf.peekMark(wspRgx) && spbuf.eat());
+    if (wsp && spbuf.isEmpty()) {
+      return (wantWsp && got1({ t: ' ', w: wsp }));
+    }
+    tkn = spbuf.peekMark(EX.sepCharsMark, null, EX.predigestOneToken);
+    //console.log(tkn);
+    if (!(tkn || false).t) { return spbuf.anomaly('untypedToken', tkn); }
+    if (wsp && wantWsp) { tkn.w = wsp; }
+    return got1(tkn);
   }
   while (spbuf.notEmpty() && (ctx.limit > 0)) { eat1(); }
   return newTokens;
@@ -58,9 +73,12 @@ EX.parseMoreTokens = function (limit) {
 
 
 EX.predigestOneToken = function digest(tx, sep) {
-  if (!sep) { return sep; }
-  if (tx) { return EX.parseName('', this.eat()); }
   var buf = this, wsp = sep[1], brak = sep[2], sl = sep[3];
+  if ((!sep) && (!tx)) { tx = buf.peekRemainder(); }
+  if (tx) {
+    tx = buf.eat();
+    return (EX.parseName('', tx) || { e: 'badName', v: tx });
+  }
   if (wsp) {
     if (wsp === '%') { return EX.parseComment(buf); }
     return buf.anomaly('predigest_wsp');
@@ -68,8 +86,8 @@ EX.predigestOneToken = function digest(tx, sep) {
   if (brak) { return EX.foundBracket(brak, buf); }
   if (sl) {
     buf.eatChars(sl.length);
-    buf.peekMark(EX.sepCharsMark, '');
-    return EX.parseName(sl, this.eat());
+    tx = (buf.peekMark(EX.sepCharsMark, '') && buf.eat());
+    return EX.parseName(sl, tx);
   }
   buf.anomaly('predigestUnknownToken', sep[0]);
 };

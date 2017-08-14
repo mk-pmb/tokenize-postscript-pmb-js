@@ -1,6 +1,7 @@
 #!/bin/sed -urf
 # -*- coding: UTF-8, tab-width: 2 -*-
 
+/^\s*\{ "t": " ",/n
 /^\s*\{ "?t"?:/{
   /"/!s~'~"~g
   s~(\{|,)( +)([a-z]): ("|true|false|null|-?[0-9]+)~\1\2"\3": \4~g

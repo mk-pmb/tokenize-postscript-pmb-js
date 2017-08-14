@@ -16,5 +16,6 @@
   "⛬":  "save",
   "(":  "string",
   " ":  "x_whitespace",
-  "¦":  "x_scan_mark"
+  "¦":  "x_scan_mark",
+  "¿":  "x_unparsed"
 }
