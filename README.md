@@ -36,17 +36,18 @@ from [test/usage.js](test/usage.js):
 
 <!--#include file="test/usage.js" start="  //#u" stop="  //#r"
   outdent="  " code="javascript" -->
-<!--#verbatim lncnt="11" -->
+<!--#verbatim lncnt="12" -->
 ```javascript
 var makeTokenizer = require('tokenize-postscript-pmb'),
-  psCode = fixture('./input/usage.ps'),
+  psCode = fixture('input/usage.ps'),
   parseOpt = { ignWsp: false },
   tokenize = makeTokenizer(psCode, parseOpt),
   tokens = tokenize(),
-  expected = require('./expect/usage.tokens.json');
+  expected = fixture.json('expect/usage.tokens'),
+  equal = require('equal-pmb');
 
 equal(tokenize.remainder(), '');
-equal(tokens, expected);
+equal.lists(tokens, expected);
 ```
 <!--/include-->
 
