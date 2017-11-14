@@ -20,6 +20,8 @@ EX = function (code, opt) {
     convert:  opt.convert,
     collect:  opt.collect,
     ignWsp:   opt.ignWsp,
+    maxTokens:    opt.maxTokens,
+    typeUpgrade:  opt.typeUpgrade,
   };
   pmt.remainder = function () { return pmt.spbuf.buf; };
   return pmt;
@@ -40,13 +42,17 @@ EX.simpleVanilla = function (code) {
 EX.sepCharsMark = { inc: false,
   rgx: /(\s|%)|([\(\)\[\]\{\}<>])|(\/{1,2})/ };
 EX.parseMoreTokens = function (onceOpt) {
-  if (!onceOpt) { onceOpt = false; }
-  var pmt = this, spbuf = pmt.spbuf, opt = pmt.opt, newTokens = [], ctx,
+  var pmt = this, spbuf = pmt.spbuf, newTokens = [], ctx,
+    opt = Object.assign({}, pmt.opt, onceOpt),
+    typeUp = (opt.typeUpgrade && types.upgradeInplace),
     wspRgx = /^\s+/, wantWsp = (opt.ignWsp === false);
-  ctx = { parseMoreTokens: pmt, buf: spbuf,
-    limit: ifPlusNum(onceOpt.limit, Number.POSITIVE_INFINITY), };
+  ctx = { limit: ifPlusNum(opt.maxTokens, Number.POSITIVE_INFINITY) };
+  //console.log('parseMoreTokens:', opt, ctx);
+  ctx.parseMoreTokens = pmt;
+  ctx.buf = spbuf;
   function got1(tkn, tmp) {
     //console.log('eat1:', newTokens.length, tkn);
+    if (typeUp) { typeUp(tkn); }
     if (opt.convert) {
       tmp = opt.convert(tkn, ctx);
       if (tmp === null) { return 'skip'; }

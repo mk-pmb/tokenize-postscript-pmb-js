@@ -24,6 +24,11 @@ Tokens are reported as objects that have some of these properties.
   `undefined` of some other false-y value for literal objects.
 * `w`: Whitespace that was found in front of the token.
 
+Upgraded versions include:
+* `T`: The type name as string, or a false-y value for unsupported types.
+
+
+
 
 
 

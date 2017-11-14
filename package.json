@@ -1,5 +1,5 @@
 { "name": "tokenize-postscript-pmb",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Parse the subset of PostScript that I understand.",
   "keywords": [ "parse", "postscript", "token" ],
 

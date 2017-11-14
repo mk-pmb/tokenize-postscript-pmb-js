@@ -18,7 +18,7 @@ Object.keys(symb2name).sort().forEach(registerType);
 
 EX.bless = (function (fxs) {
   return function bless(t, v, fx) {
-    var s = (bySymb[t] || byName[t] || false).symb, r;
+    var s = (bySymb[t] || EX.byName[t] || false).symb, r;
     if (!s) { throw new Error('Unsupported type spec: ' + t); }
     r = { t: s, v: v };
     if (fx) { fxs[fx](r); }
@@ -30,10 +30,10 @@ EX.bless = (function (fxs) {
 }));
 
 
-EX.upgrade = function (x) {
+EX.upgradeInplace = function (x) {
   var ty = (x && x.t && bySymb[x.t]);
   if (!ty) { return x; }
-  return Object.assign(x, ty.api);
+  return Object.assign(x, ty.api, { T: ty.name });
 };
 
 
@@ -47,6 +47,7 @@ EX.toKey = function (x) {
 
 
 EX.name2symb = function (n) { return ((byName[n] || false).symb || false); };
+EX.symb2name = function (s) { return ((bySymb[s] || false).name || false); };
 
 
 EX.blessIntOrRealIfHuge = function (n) {
