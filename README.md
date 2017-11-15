@@ -21,7 +21,7 @@ Tokens are reported as objects that have some of these properties.
 * `v`: value.
 * `x`: `true` if the object is executable,
   `'//'` if the object is to be executed immediately,
-  `undefined` of some other false-y value for literal objects.
+  `undefined` or some other false-y value for literal objects.
 * `w`: Whitespace that was found in front of the token.
 
 Upgraded versions include:
